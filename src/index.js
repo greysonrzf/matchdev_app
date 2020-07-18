@@ -1,4 +1,9 @@
 import React from 'react';
+import { LogBox } from 'react-native'
+
+LogBox.ignoreLogs([
+  'Unrecognized WebSocket'
+])
 
 import '~/config/ReactotronConfig';
 

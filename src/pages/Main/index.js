@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react';
+import io from 'socket.io-client'
 import AsyncStorage from '@react-native-community/async-storage'
 import Icon from 'react-native-vector-icons/AntDesign'
 
-import { SafeAreaView, View, Text, Image, StyleSheet, StatusBar } from 'react-native';
+import { SafeAreaView, View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 
 import api from '~/services/api'
 
 import logo from '~/assets/logo.png'
-import { TouchableOpacity } from 'react-native-gesture-handler';
+import itsamatch from '~/assets/itsamatch.png'
 
 export default function Main({ navigation }) {
   const [users, setUsers] = useState([])
   const id = navigation.getParam('user')
+  const [matchDev, setMatchDev] = useState(null)
 
   useEffect(() => {
     async function loadUsers() {
@@ -25,6 +27,16 @@ export default function Main({ navigation }) {
     }
 
     loadUsers();
+  }, [id])
+
+  useEffect(() => {
+    const socket = io('http://localhost:3333', {
+      query: { user: id }
+    })
+
+    socket.on('match', dev => {
+      setMatchDev(dev)
+    })
   }, [id])
 
   async function handleLike() {
@@ -48,40 +60,34 @@ export default function Main({ navigation }) {
   }
 
   async function handleLogout() {
-    try {
-      await AsyncStorage.clear();
+    await AsyncStorage.clear()
 
-      navigation.navigate('Login')
-
-    } catch (error) {
-      console.tron.log(error)
-    }
+    navigation.navigate('Login')
   }
 
   return (
-    <>
-      <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
-      <SafeAreaView style={styles.container}>
-        <TouchableOpacity onPress={handleLogout}>
-          <Image style={styles.logo} source={logo} />
-        </TouchableOpacity>
+    <SafeAreaView style={styles.container}>
+      <TouchableOpacity onPress={handleLogout}>
+        <Image style={styles.logo} source={logo} />
+      </TouchableOpacity>
 
-        <View style={styles.cardscontainer}>
+      <View style={styles.cardscontainer}>
 
-          {users.length === 0
-            ? <Text style={styles.empty}>Acabou :(</Text>
-            : (users.map((user, index) => (
-              <View key={user._id} style={[styles.card, { zIndex: users.length - index }]}>
-                <Image style={styles.avatar} source={{ uri: user.avatar }} />
-                <View style={styles.footer}>
-                  <Text style={styles.name}>{user.name}</Text>
-                  <Text style={styles.bio} numberOfLines={3}>{user.bio}</Text>
-                </View>
+        {users.length === 0
+          ? <Text style={styles.empty}>Acabou :(</Text>
+          : (users.map((user, index) => (
+            <View key={user._id} style={[styles.card, { zIndex: users.length - index }]}>
+              <Image style={styles.avatar} source={{ uri: user.avatar }} />
+              <View style={styles.footer}>
+                <Text style={styles.name}>{user.name}</Text>
+                <Text style={styles.bio} numberOfLines={3}>{user.bio}</Text>
               </View>
-            )))}
+            </View>
+          )))}
 
-        </View>
+      </View>
 
+      {users.length > 0 && (
         <View style={styles.buttonsContainer}>
           <TouchableOpacity style={styles.button}>
             <Icon name="dislike1" size={40} color="#db5844" onPress={handleDislike} />
@@ -90,8 +96,22 @@ export default function Main({ navigation }) {
             <Icon name="like1" size={40} color="#26e7ed" onPress={handleLike} />
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
-    </>
+      )}
+
+      {matchDev && (
+        <View style={styles.matchContainer}>
+          <Image style={styles.matchImage} source={itsamatch} />
+          <Image style={styles.matchAvatar} source={{ uri: matchDev.avatar }} />
+
+          <Text style={styles.matchName}>{matchDev.name}</Text>
+          <Text style={styles.matchBio}>{matchDev.bio}</Text>
+
+          <TouchableOpacity onPress={() => setMatchDev(null)}>
+            <Text style={styles.closeMatch}>FECHAR</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </SafeAreaView>
   )
 };
 
@@ -172,12 +192,50 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 20,
     elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    shadowOffset: {
-      width: 0,
-      height: 2
-    }
+  },
+
+  matchContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+
+  matchImage: {
+    height: 60,
+    resizeMode: 'contain'
+  },
+
+  matchAvatar: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    borderWidth: 5,
+    borderColor: '#FFF',
+    marginVertical: 30,
+  },
+
+  matchName: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: '#FFF'
+  },
+
+  matchBio: {
+    marginTop: 10,
+    fontSize: 16,
+    color: 'rgba(255,255,255, 0.8)',
+    lineHeight: 24,
+    textAlign: 'center',
+    paddingHorizontal: 30,
+  },
+
+  closeMatch: {
+    fontSize: 16,
+    color: 'rgba(255,255,255, 0.8)',
+    textAlign: 'center',
+    marginTop: 30,
+    fontWeight: 'bold'
   }
 })
